@@ -151,7 +151,22 @@ function banner(p,st,o={}){
   p.box(w*.98,.45,.4,st.trim,{x:w/2,y:H-1.5,...MT.gold});
   p.pushT(w/2,fy+fh*.08,.3);emblem(p,st,o.emblem,Math.min(w,fh)*.2,st.trim);p.pop();
 }
-UP.sword=sword;UP.axe=axe;UP.hammer=hammer;UP.spear=spear;UP.bow=bow;UP.crossbow=crossbow;UP.staff=staff;UP.shield=shield;UP.banner=banner;
+// Weapons are modelled with the head/blade plane facing front-back; a held weapon should show its head forward.
+// Blender-body kits set UP.heldRoll (a quarter turn about the shaft) so these four are turned when held.
+// A Blender hand closes into a fist whose knuckle line (UP.heldAxis, set by the kits' at()) is the direction a shaft passes through it:
+// shaft weapons are turned (minimally) so their shaft lies exactly along it, i.e. through the middle of the fist.
+const _R3=new T3.Matrix4(),_Ri=new T3.Matrix4(),_Ql=new T3.Matrix4(),_dk=new T3.Vector3(),_tg=new T3.Vector3(),_qq=new T3.Quaternion();
+const held=(fn,roll)=>function(p,st,o){
+  let pushed=0;const ax=UP.heldAxis;
+  if(ax){
+    _R3.extractRotation(p.M);_dk.set(0,1,0).applyMatrix4(_R3).normalize();_tg.set(ax[0],ax[1],ax[2]).normalize();if(_dk.dot(_tg)<0)_tg.negate();
+    if(_dk.angleTo(_tg)<1.0){_qq.setFromUnitVectors(_dk,_tg);_Ql.makeRotationFromQuaternion(_qq);_Ri.copy(_R3).invert();p.push(_Ri.clone().multiply(_Ql).multiply(_R3));pushed++;}
+  }
+  if(roll&&UP.heldRoll){p.pushT(0,0,0,0,UP.heldRoll,0);pushed++;}
+  fn(p,st,o);while(pushed--)p.pop();
+};
+UP.heldRoll=0;UP.heldAxis=null;
+UP.sword=held(sword,true);UP.axe=held(axe,true);UP.hammer=held(hammer,true);UP.spear=held(spear,true);UP.bow=held(bow,false);UP.crossbow=crossbow;UP.staff=held(staff,false);UP.shield=shield;UP.banner=held(banner,false);
 
 // ---------------------------------------------------------------- heads and helms
 function helm(p,st,type,hy,hr,o={}){

@@ -36,7 +36,7 @@ function flairOpts(st){
 function fig(p,st,o={}){
   const armor=o.armor||'chain',helm=o.helm===undefined?helmFor(st,armor):o.helm;
   // Blender-made body when one is available (races: human/elf/dwarf/orc/undead); the procedural figure is the fallback
-  if(!o.ride&&AE.BODY){const bf=AE.BODY.build(p,st,{...o,armor},curHero);if(bf)return bf;}
+  if(!o.ride&&AE.BODY){const bf=AE.BODY.build(p,st,{...o,armor},curHero);if(bf){UP.heldRoll=-PI/2;return bf;}}
   const f=UP.figure(p,st,{...flairOpts(st),...o,armor,helm,fullHelm:FULLHELM.has(helm)});
   // faction signature details
   const sY=f.shY,W=f.W;
@@ -49,7 +49,7 @@ function fig(p,st,o={}){
   return f;
 }
 let curHero=false;
-function at(p,h,r,fn){if(h&&h.skip)return;p.pushT(h[0],h[1],h[2],r?r[0]:0,r?r[1]:0,r?r[2]:0);fn();p.pop();}
+function at(p,h,r,fn){if(h&&h.skip)return;p.pushT(h[0],h[1],h[2],r?r[0]:0,r?r[1]:0,r?r[2]:0);const prev=UP.heldAxis;UP.heldAxis=h.axis||null;fn();UP.heldAxis=prev;p.pop();}
 function quiver(p,st,f,side=1){p.pushT(side*1.6*f.W,f.shY-4,-3.1*f.W,.25,0,side*.25);p.cyl(1.1,.9,8,st.leather,{seg:8,...MT.leather});for(let i=0;i<5;i++){p.cyl(.12,.12,3,0xd8c8a0,{x:(i%3-1)*.45,y:4.8,z:(i>2?.4:-.3)});p.cone(.4,1,st.flair==='sun'?0xffe08a:st.race==='undead'?0x8a4ad8:0xe8e8e8,{x:(i%3-1)*.45,y:6.6,z:(i>2?.4:-.3),seg:3});}p.pop();}
 function backpack(p,st,f){p.box(6*f.W,7,4,st.leather,{y:f.shY-3.4,z:-4.2*f.W,...MT.leather,jit:.1});p.cyl(1.3,1.3,7.2,mix(st.cloth,0xc8b890,.5),{y:f.shY+.8,z:-4.2*f.W,rz:PI/2,seg:10,...MT.cloth});p.cyl(1.2,1.4,2,0x6a6a6a,{x:2*f.W,y:f.shY-7.6,z:-5,seg:8,...MT.metal});}
 function hawk(p,st,col=0x8a6a4a){p.sph(1.1,col,{sx:.8,sy:1.2});p.sph(.7,col,{y:1.5,z:.3});p.cone(.25,.7,0xe8b030,{y:1.4,z:1,rx:PI/2,seg:4});for(const sd of[-1,1])p.box(3.2,.25,1.8,shade(col,.85),{x:sd*1.8,y:.6,rz:sd*.5});}
@@ -211,7 +211,7 @@ kit('shadeblade',(p,st,I)=>{const f=fig(p,st,{armor:'leather',rp:'low',lp:'low',
 // ---- faction heroes (larger, caped, signature weapons)
 const heroBase=(p,st,I)=>{I.hero=true;I.baseR=14;p.torus(14.2,.5,0xffd56a,{y:2.6,rx:PI/2,...MT.gold,e:.9});};
 kit('hero_aldermark',(p,st,I)=>{p.pushT(0,0,0,0,0,0,1.18);const f=fig(p,st,{armor:'heavy',bulk:1.06,rp:'twoR',lp:'twoL',cape:0x1c3f8a,helm:'great',crest:false,metal:mix(st.metal,0xffe8a0,.35),pauldrons:true});
-  at(p,f.R,[.35,0,.45],()=>UP.sword(p,st,{len:18,glow:.3}));p.pushT(0,f.top+1.8,0);UP.emblem(p,st,'lion',1.3,0xffd25a);p.pop();p.sph(1.6,0xffffff,{y:f.top+4.4,z:-1.6,sy:2,sz:.6});p.pop();heroBase(p,st,I);});
+  at(p,f.R,[.35,0,.45],()=>UP.sword(p,st,{len:18,glow:.3}));if(!f.blender){p.pushT(0,f.top+1.8,0);UP.emblem(p,st,'lion',1.3,0xffd25a);p.pop();p.sph(1.6,0xffffff,{y:f.top+4.4,z:-1.6,sy:2,sz:.6});}p.pop();heroBase(p,st,I);});
 kit('hero_valedawn',(p,st,I)=>{p.pushT(0,0,0,0,0,0,1.18);const f=fig(p,st,{armor:'heavy',bulk:1.04,rp:'spearR',lp:'shield',cape:0xf6f0e0,helm:'sunhelm',pauldrons:true});
   at(p,f.R,null,()=>UP.spear(p,st,{len:36,style:'sunspear',pennant:0xffd25a}));at(p,f.L,[0,-.3,0],()=>UP.shield(p,st,{type:'sunround',emblem:'sun',s:1.1}));UP.helm(p,st,'halo',f.hy,f.hr);BIGWING(p,0xfff6dc);p.pop();heroBase(p,st,I);});
 kit('hero_sylvanor',(p,st,I)=>{p.pushT(0,0,0,0,0,0,1.18);const f=fig(p,st,{armor:'leather',rp:'draw',lp:'bowArm',cape:0x1e5a3a,helm:null,longHair:true,pauldrons:true,w:.92});
@@ -250,7 +250,7 @@ AE.unitGeo=function(k,o){
   const key=k+'|'+o;let g=geoCache.get(key);if(g)return g;
   const st=AE.fstyle(o),p=new AE.Prefab(),I={face:'z',baseR:11.5,naval:false,hero:!!(UNITS[k]&&UNITS[k].hero)};
   const fn=KITS[k]||KITS.warrior;
-  curHero=!!I.hero;
+  curHero=!!I.hero;UP.heldRoll=0;
   try{
     p.pushT(0,2.65,0);fn(p,st,I);p.pop();
     if(I.naval){navalRing(p,st,I);}else pedestal(p,st,I);
@@ -326,11 +326,11 @@ function rig(S=256){
   const cam=new T3.PerspectiveCamera(24,1,1,2000);const rt=new T3.WebGLRenderTarget(S,S,{samples:4});rt.texture.encoding=T3.sRGBEncoding;
   iconRigs[S]={sc,cam,rt,buf:new Uint8Array(S*S*4)};return iconRigs[S];
 }
-AE.unitIcon=function(k,o,S=256){
-  const key=S===256?k+'|'+o:k+'|'+o+'|'+S;let url=iconCache.get(key);if(url)return url;
+AE.unitIcon=function(k,o,S=256,yaw){
+  const key=(S===256?k+'|'+o:k+'|'+o+'|'+S)+(yaw===undefined?'':'|y'+yaw);let url=iconCache.get(key);if(url)return url;
   if(!threeWorld.ready)return null;
   const r=rig(S),g=AE.unitGeo(k,o),I=g.userData.info,mesh=new T3.Mesh(g,AE.prefabMat);
-  mesh.rotation.y=I.face==='x'?-.55:.42;r.sc.add(mesh);
+  mesh.rotation.y=yaw!==undefined?yaw:(I.face==='x'?-.55:.42);r.sc.add(mesh);
   const bb=new T3.Box3().setFromObject(mesh);
   // frame the body, not long pikes/lances/banners: clamp the box around the model's core
   const lim=I.naval?30:I.face==='x'?26:I.hero?26:22;bb.min.x=Math.max(bb.min.x,-lim);bb.max.x=Math.min(bb.max.x,lim);bb.min.z=Math.max(bb.min.z,-lim);bb.max.z=Math.min(bb.max.z,lim);bb.max.y=Math.min(bb.max.y,I.flying?44:I.hero?44:38);

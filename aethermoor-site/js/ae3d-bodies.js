@@ -14,6 +14,11 @@ let pendingInval=0;
 const srgb=v=>v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055;
 const hexOf=c=>(Math.round(srgb(c.r)*255)<<16)|(Math.round(srgb(c.g)*255)<<8)|Math.round(srgb(c.b)*255);
 const TINT=/tabard|clanred|cloak|bandana|ragsred|clothgreen|clothdark/i;
+// arm poses whose fist is turned to a shaft direction (the others keep a loose curl and no axis snapping)
+const HOLD_AXIS={weapon:1,raised:1,staffR:1,twoR:1,twoL:1,shield:1,bowArm:1};
+// kit pose names that share a stored arm pose
+const POSE_ALIAS_R={low:'weapon',hip:'weapon',spearR:'staffR',bannerR:'staffR',book:'carry',shield:'weapon',twoL:'twoR',xbowL:'xbowR'};
+const POSE_ALIAS_L={low:'weapon',hip:'weapon',weapon:'weapon',staffR:'weapon',spearR:'weapon',bannerR:'weapon',twoR:'twoL',xbowR:'xbowL'};
 
 function invalidateSoon(){
   if(pendingInval)return;
@@ -34,8 +39,8 @@ function ensure(key){
     const parts=[];
     root.traverse(o=>{
       if(!o.isMesh)return;
-      const m=o.material,c=m.color;
-      parts.push({geo:o.geometry,mat:m,matrix:o.matrixWorld.clone(),name:m.name||'',rgb:[srgb(c.r),srgb(c.g),srgb(c.b)],metal:m.metalness||0,rough:m.roughness===undefined?.8:m.roughness,em:m.emissive?Math.max(m.emissive.r,m.emissive.g,m.emissive.b):0});
+      const m=o.material,c=m.color,tg=/^([RL])\.(\w+?)_\d+d?$/.exec((o.parent&&o.parent.name)||'');   // arm parts are named "R.<pose>_n" / "L.<pose>_n"; everything else is the body
+      parts.push({side:tg?tg[1]:null,pose:tg?tg[2]:null,geo:o.geometry,mat:m,matrix:o.matrixWorld.clone(),name:m.name||'',rgb:[srgb(c.r),srgb(c.g),srgb(c.b)],metal:m.metalness||0,rough:m.roughness===undefined?.8:m.roughness,em:m.emissive?Math.max(m.emissive.r,m.emissive.g,m.emissive.b):0});
     });
     b.parts=parts;b.info=manifest[key];b.state='ok';invalidateSoon();
   }).catch(e=>{b.state='failed';console.warn('unit body',key,e);});
@@ -45,7 +50,7 @@ function ensure(key){
 function variant(st,o,hero){
   const race=st.race;if(!RACE_H[race])return null;
   if(hero)return 'hero_'+st.id;
-  const a=o.armor||'chain',archer=o.rp==='draw'||o.rp==='xbowR';
+  const a=o.armor||'chain',archer=o.rp==='draw';                       // bow users only; crossbowmen keep a normal body and get a crossbow
   if(race==='human'||race==='undead'){
     if(archer&&race==='human')return 'human_leather';
     if(archer&&race==='undead')return 'undead_leather';
@@ -65,8 +70,12 @@ AE.BODY={
     const key=variant(st,o,hero);if(!key)return null;
     const b=ensure(key);if(!b)return null;
     const info=b.info,race=st.race,Ht=(RACE_H[race]||25.4),s=Ht/info.h,bulk=o.bulk||1;
+    // arm poses: pick the stored pose that matches the kit's right/left arm pose names (falls back to the hanging arm)
+    const poseOf=(side,key)=>{const have=(info.poses&&info.poses[side])||{};if(have[key])return key;const al=side==='R'?POSE_ALIAS_R[key]:POSE_ALIAS_L[key];return al&&have[al]?al:'rest';};
+    const pR=poseOf('R',o.rp||'rest'),pL=poseOf('L',o.lp||'rest');
     p.pushT(0,0,0,0,0,0,[s*bulk,s,s*bulk]);
     for(const pt of b.parts){
+      if(pt.side&&((pt.side==='R'&&pt.pose!==pR)||(pt.side==='L'&&pt.pose!==pL)))continue;
       let rgb=pt.rgb;
       if(TINT.test(pt.name)&&st.cloth!==undefined){const t=new T3.Color(st.cloth),mx=(a,bb,k)=>a+(bb-a)*k;rgb=[mx(rgb[0],t.r,.78),mx(rgb[1],t.g,.78),mx(rgb[2],t.b,.78)];}
       p.push(pt.matrix);
@@ -76,10 +85,12 @@ AE.BODY={
     p.pop();
     const sc=v=>[v[0]*s*bulk,v[1]*s,v[2]*s*bulk];
     // attach things at the real palm/grip point (a little out from and below the wrist) when the rig gave one
-    let R=sc(info.gripR||info.handR),L=sc(info.gripL||info.handL);
-    const axR=info.axisR||[0,-1,0],axL=info.axisL||[0,-1,0];
+    const gR=info.poses&&info.poses.R&&info.poses.R[pR],gL=info.poses&&info.poses.L&&info.poses.L[pL];
+    let R=sc((gR&&gR.grip)||info.gripR||info.handR),L=sc((gL&&gL.grip)||info.gripL||info.handL);
+    const axR=(gR&&gR.axis)||info.axisR||[0,-1,0],axL=(gL&&gL.axis)||info.axisL||[0,-1,0];
+    if(gR&&gR.axis&&HOLD_AXIS[pR])R.axis=gR.axis;                       // the fist's knuckle line: a held shaft passes along it
+    if(gL&&gL.axis&&HOLD_AXIS[pL])L.axis=gL.axis;
     if(info.weapon){R=R.slice();L=R.slice();R.skip=true;L.skip=true;}   // the body already carries its weapon
-    else if(o.rp==='draw'){L=R.slice();}                                // no bow-string line across the hips
     return {R,L,axisR:axR,axisL:axL,top:Ht,hy:Ht*.88,hr:Ht*.108*(race==='dwarf'?1.14:1),shY:Ht*.736,hipY:Ht*.43,W:RACE_W[race]||1,body:key,blender:true};
   },
   variant,ensure,
