@@ -70,8 +70,48 @@ function cap(side,kind){const civ=civOf(side==='y'?G.player:tradeDraft.other);re
 // figCache[id] = {url, port} ; the raw render is shown at once, then cropped to the figure's outline
 // (and a head-and-shoulders portrait window is computed) asynchronously, after which the screen refreshes once.
 const figCache={},figBusy={};
+// Blender-made leader models (assets/models/leaders/<civ id>.glb). Turned off per leader if its file fails to load.
+const LEADER_GLB={0:1,1:1,2:1,3:1,4:1,10:1,11:1,12:1,13:1,14:1};
+let glbRig=null;
+function renderGLBLeader(id,done){
+  const T3=window.THREE,R=window.threeWorld&&threeWorld.renderer;
+  if(!T3||!R||!window.AE3DGLB||!threeWorld.ready)return done(null);
+  AE3DGLB.load('assets/models/leaders/'+id+'.glb').then(model=>{
+    const SW=768,SH=1024;
+    if(!glbRig){
+      const sc=new T3.Scene();
+      sc.add(new T3.HemisphereLight(0xeef4ff,0x4a4034,.85));
+      const key=new T3.DirectionalLight(0xfff0d8,1.5);key.position.set(-1.2,2.2,3);sc.add(key);
+      const fill=new T3.DirectionalLight(0xbfd6ff,.55);fill.position.set(2.5,1,2);sc.add(fill);
+      const rim=new T3.DirectionalLight(0x9fc8ff,.8);rim.position.set(1.5,1.5,-2.5);sc.add(rim);
+      const rt=new T3.WebGLRenderTarget(SW,SH,{samples:4});rt.texture.encoding=T3.sRGBEncoding;
+      glbRig={sc,cam:new T3.PerspectiveCamera(22,SW/SH,.1,100),rt,buf:new Uint8Array(SW*SH*4)};
+    }
+    const r=glbRig;r.sc.add(model);model.updateMatrixWorld(true);
+    const bb=new T3.Box3().setFromObject(model),size=bb.getSize(new T3.Vector3()),ctr=bb.getCenter(new T3.Vector3());
+    const th=Math.tan(11*Math.PI/180),dist=Math.max(size.y/2/th,size.x/2/(th*(SW/SH)))*1.1;
+    r.cam.position.set(ctr.x,ctr.y+size.y*.03,ctr.z+dist);r.cam.lookAt(ctr.x,ctr.y,ctr.z);r.cam.near=dist*.2;r.cam.far=dist*4;r.cam.updateProjectionMatrix();
+    const prevRT=R.getRenderTarget(),prevClear=R.getClearColor(new T3.Color()),prevA=R.getClearAlpha();
+    R.setRenderTarget(r.rt);R.setClearColor(0x000000,0);R.clear();R.render(r.sc,r.cam);R.readRenderTargetPixels(r.rt,0,0,SW,SH,r.buf);
+    R.setRenderTarget(prevRT);R.setClearColor(prevClear,prevA);r.sc.remove(model);
+    const c=document.createElement('canvas');c.width=SW;c.height=SH;const x=c.getContext('2d'),img=x.createImageData(SW,SH);
+    for(let y=0;y<SH;y++)img.data.set(r.buf.subarray((SH-1-y)*SW*4,(SH-y)*SW*4),y*SW*4);
+    x.putImageData(img,0,0);done(c.toDataURL('image/png'));
+  }).catch(e=>{console.warn('leader model',id,e);done(null);});
+}
 function leaderFigure(id){
   if(figCache[id])return figCache[id];
+  if(LEADER_GLB[id]){
+    if(!figBusy[id]){
+      figBusy[id]=1;
+      const refresh=()=>{if(tradeDraft&&tradeDraft.other===id&&document.querySelector('.dq-stage'))renderTrade();};
+      renderGLBLeader(id,u=>{
+        if(!u){LEADER_GLB[id]=0;figBusy[id]=0;refresh();return;}
+        const im=new Image();im.onload=()=>{try{figCache[id]=cropFigure(im);}catch(e){figCache[id]={url:u,port:null};console.warn('figure crop',e);}refresh();};im.src=u;
+      });
+    }
+    if(LEADER_GLB[id])return null;    // placeholder until the model is ready
+  }
   try{
     const hk=typeof heroUnitForCiv==='function'?heroUnitForCiv(id):null;
     if(hk&&window.AE3&&AE3.unitIcon&&window.threeWorld&&threeWorld.ready&&window.THREE){

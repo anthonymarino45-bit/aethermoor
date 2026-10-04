@@ -35,6 +35,8 @@ function flairOpts(st){
 // standard figure with race/faction defaults
 function fig(p,st,o={}){
   const armor=o.armor||'chain',helm=o.helm===undefined?helmFor(st,armor):o.helm;
+  // Blender-made body when one is available (races: human/elf/dwarf/orc/undead); the procedural figure is the fallback
+  if(!o.ride&&AE.BODY){const bf=AE.BODY.build(p,st,{...o,armor},curHero);if(bf)return bf;}
   const f=UP.figure(p,st,{...flairOpts(st),...o,armor,helm,fullHelm:FULLHELM.has(helm)});
   // faction signature details
   const sY=f.shY,W=f.W;
@@ -46,7 +48,8 @@ function fig(p,st,o={}){
   if(st.flair==='shadow'&&!o.noFlair)for(let i=0;i<4;i++){const a=i*1.57+.4;p.cone(.7,3,0x8a6aff,{x:Math.cos(a)*3.4,y:1.6,z:Math.sin(a)*3.4,seg:5,e:1.2});}
   return f;
 }
-function at(p,h,r,fn){p.pushT(h[0],h[1],h[2],r?r[0]:0,r?r[1]:0,r?r[2]:0);fn();p.pop();}
+let curHero=false;
+function at(p,h,r,fn){if(h&&h.skip)return;p.pushT(h[0],h[1],h[2],r?r[0]:0,r?r[1]:0,r?r[2]:0);fn();p.pop();}
 function quiver(p,st,f,side=1){p.pushT(side*1.6*f.W,f.shY-4,-3.1*f.W,.25,0,side*.25);p.cyl(1.1,.9,8,st.leather,{seg:8,...MT.leather});for(let i=0;i<5;i++){p.cyl(.12,.12,3,0xd8c8a0,{x:(i%3-1)*.45,y:4.8,z:(i>2?.4:-.3)});p.cone(.4,1,st.flair==='sun'?0xffe08a:st.race==='undead'?0x8a4ad8:0xe8e8e8,{x:(i%3-1)*.45,y:6.6,z:(i>2?.4:-.3),seg:3});}p.pop();}
 function backpack(p,st,f){p.box(6*f.W,7,4,st.leather,{y:f.shY-3.4,z:-4.2*f.W,...MT.leather,jit:.1});p.cyl(1.3,1.3,7.2,mix(st.cloth,0xc8b890,.5),{y:f.shY+.8,z:-4.2*f.W,rz:PI/2,seg:10,...MT.cloth});p.cyl(1.2,1.4,2,0x6a6a6a,{x:2*f.W,y:f.shY-7.6,z:-5,seg:8,...MT.metal});}
 function hawk(p,st,col=0x8a6a4a){p.sph(1.1,col,{sx:.8,sy:1.2});p.sph(.7,col,{y:1.5,z:.3});p.cone(.25,.7,0xe8b030,{y:1.4,z:1,rx:PI/2,seg:4});for(const sd of[-1,1])p.box(3.2,.25,1.8,shade(col,.85),{x:sd*1.8,y:.6,rz:sd*.5});}
@@ -69,8 +72,9 @@ kit('settler',(p,st,I)=>{const f=fig(p,st,{armor:'cloth',rp:'carry',lp:'carry',h
   if(st.race==='orc'){p.sph(1.3,0xe6dcc0,{x:2.6,y:7.6});}if(st.race==='dwarf')p.box(.5,5,.5,0x6a6a6a,{x:-1,y:8,rz:.6,...MT.metal});
   p.pushT(-3,4,0);UP.banner(p,st,{h:12,w:4,fh:4});p.pop();p.pop();I.baseR=13;});
 kit('worker',(p,st,I)=>{const f=fig(p,st,{armor:'leather',rp:'carry',lp:'rest',helm:st.race==='human'||st.race==='elf'?'hat':st.race==='dwarf'?'cap':st.race==='undead'?'hood':null,cloth:mix(st.cloth,0x7a6a4a,.5),noFlair:true,tabard:false});
-  p.box(4.6*f.W,7,.4,0x8a6a42,{y:f.hipY+2,z:2.6*f.W,...MT.leather});
-  at(p,f.R,[-2.3,0,.3],()=>{p.cyl(.4,.45,14,st.wood,{y:3,seg:6,...MT.wood});p.ext([[0,-.6],[5,-1.6],[5.6,-.8],[0,.6],[-5.6,-.8],[-5,-1.6]],.7,0x8a8a90,{y:10,...MT.metal});});
+  if(!f.blender)p.box(4.6*f.W,7,.4,0x8a6a42,{y:f.hipY+2,z:2.6*f.W,...MT.leather});
+  // on a Blender body the shaft goes through the palm and leans out and forward, the way the hanging hand is angled
+  at(p,f.R,f.blender?[.2,0,.2]:[-2.3,0,.3],()=>{if(f.blender)p.pushT(0,0,0,0,PI/2,0);p.cyl(.4,.45,14,st.wood,{y:3,seg:6,...MT.wood});p.ext([[0,-.6],[5,-1.6],[5.6,-.8],[0,.6],[-5.6,-.8],[-5,-1.6]],.7,0x8a8a90,{y:10,...MT.metal});if(f.blender)p.pop();});
   at(p,f.L,[0,0,0],()=>{p.cyl(2.2,1.6,2.4,0x9a7a4a,{y:-1.4,seg:9,...MT.wood});p.ico(1,0x8a8278,{y:.2,x:.6,flat:true});p.ico(.9,0x8a8278,{y:.1,x:-.7,flat:true});});
   p.pushT(-9,0,4,0,.6,0);UP.wheel(p,6,2,0,2,st.wood,st.metal2);p.box(6,2.4,4.6,st.wood,{x:1.4,y:3.6,...MT.wood});p.ico(1.8,0x8a8278,{x:1.4,y:5,flat:true,d:1});p.limb([-1.6,3.4,1.6],[-5,4.6,1.6],.3,.3,st.wood,{seg:4});p.limb([-1.6,3.4,-1.6],[-5,4.6,-1.6],.3,.3,st.wood,{seg:4});p.pop();
   I.baseR=12.5;});
@@ -246,6 +250,7 @@ AE.unitGeo=function(k,o){
   const key=k+'|'+o;let g=geoCache.get(key);if(g)return g;
   const st=AE.fstyle(o),p=new AE.Prefab(),I={face:'z',baseR:11.5,naval:false,hero:!!(UNITS[k]&&UNITS[k].hero)};
   const fn=KITS[k]||KITS.warrior;
+  curHero=!!I.hero;
   try{
     p.pushT(0,2.65,0);fn(p,st,I);p.pop();
     if(I.naval){navalRing(p,st,I);}else pedestal(p,st,I);
@@ -254,6 +259,9 @@ AE.unitGeo=function(k,o){
   g.computeBoundingBox();I.height=g.boundingBox.max.y;g.userData.info=I;g.userData.keep=true;geoCache.set(key,g);return g;
 };
 AE.unitKits=KITS;
+// called when a Blender body finishes loading: rebuild unit meshes/icons so they pick it up
+AE.unitGeoVer=0;
+AE.unitGeoInvalidate=function(){geoCache.clear();AE.unitGeoVer++;try{iconCache.clear();}catch(e){}};
 
 // ---------------------------------------------------------------- runtime unit layer
 const U={meshes:new Map(),group:null,sel:null,ghosts:[],screen:new Map()};AE.unitsRT=U;
@@ -276,7 +284,7 @@ AE.syncUnits=function(now){
   for(const u of G.units){
     const i=u.y*G.W+u.x;if(v[i]!==2)continue;seen.add(u.id);
     let rec=U.meshes.get(u.id);
-    if(!rec||rec.k!==u.k||rec.o!==u.o){if(rec)U.group.remove(rec.mesh);const g=AE.unitGeo(u.k,u.o);const m=new T3.Mesh(g,AE.prefabMat);m.castShadow=true;m.receiveShadow=true;rec={mesh:m,k:u.k,o:u.o,info:g.userData.info,ry:null,boat:null};U.meshes.set(u.id,rec);U.group.add(m);}
+    if(!rec||rec.k!==u.k||rec.o!==u.o||rec.v!==AE.unitGeoVer){if(rec)U.group.remove(rec.mesh);const g=AE.unitGeo(u.k,u.o);const m=new T3.Mesh(g,AE.prefabMat);m.castShadow=true;m.receiveShadow=true;rec={mesh:m,k:u.k,o:u.o,v:AE.unitGeoVer,info:g.userData.info,ry:null,boat:null};U.meshes.set(u.id,rec);U.group.add(m);}
     const info=rec.info,t=G.tiles[i],us=unitsAt(u.x,u.y),slot=slotFor(u,t,us),c=worldPos(u.x,u.y);
     let X=c.x+slot[0],Z=c.y+slot[1];
     const water=AE.isWater(t);let Y=water?AE.WATER_Y:AE.heightLocal(t,slot[0],slot[1]);
