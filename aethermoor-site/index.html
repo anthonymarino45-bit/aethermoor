@@ -1,7 +1,7 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap">
-<title>Realms of Aethermoor</title>
+<title>Realms of Aethermoor V5.7.0 — Graphics Overhaul</title>
 <style>
 :root{--bg:#0b1020;--panel:rgba(14,20,38,.93);--gold:#d4af5a;--gold2:#f3d98b;--ink:#eee6cf;--dim:#9aa3b8;--good:#6fdc8c;--bad:#ff7b7b}
 *{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#04060c;color:var(--ink);font-family:Georgia,'Palatino Linotype',serif;user-select:none}
@@ -113,7 +113,7 @@ button{background:linear-gradient(#2c4a8c,#14285a);border:1px solid #c9a24a;colo
 }
 .u3dicon{image-rendering:auto}
 .overview{min-width:min(760px,92vw)}.ovhead,.ovrow{display:grid;grid-template-columns:1.4fr repeat(5,.72fr) 110px;gap:8px;align-items:center;padding:7px 8px}.ovhead{color:var(--gold2);border-bottom:1px solid #c9a24a66;font-size:12px}.ovrow{border-bottom:1px solid #ffffff12;font-size:13px}.ovrow:hover{background:#ffffff0a}.queueitem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:5px 7px;border:1px solid #ffffff18;border-radius:5px;margin:4px 0;background:#0a133055}.capturegrid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:10px;max-width:660px}.capturegrid button{padding:12px;text-align:left}.stackpick{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #ffffff22;border-radius:7px;margin:6px 0;cursor:pointer;background:#0b1630}.stackpick:hover{border-color:var(--gold2);background:#152a57}
-</style><script src="vendor/three.min.js"></script><script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.151.3/three.min.js"><\/script>');</script>
+</style><script src="vendor/three.min.js"></script><script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.151.3/three.min.js"><\/script>');</script></head><body>
 <canvas id="map3d"></canvas><canvas id="map"></canvas>
 <div id="top" class="panel"><div id="emblem"><i></i><span id="emo">👑</span></div><div id="stats"></div><div id="research" onclick="openTech()"></div><div id="turnbox"></div><button id="menub" onclick="openMenu()">☰</button></div>
 <div id="rail" class="panel"><button class="ib" title="Recenter Realm (Home)" onclick="recenterRealm()">⌂</button><button class="ib" title="Empire Overview" onclick="openEmpireOverview()">🏛️</button><button class="ib" title="Military Overview" onclick="openMilitaryOverview()">⚔️</button><button class="ib" title="Technology (T)" onclick="openTech()">🔬</button><button class="ib" title="Social Policies (P)" onclick="openPolicies()">🎭</button><button class="ib" title="Diplomacy (D)" onclick="openDiplo()">🤝</button><button class="ib" title="Trade Routes" onclick="openTradeRoutes()">🚚</button><button class="ib" title="Espionage" onclick="openEspionage()">🕵️</button><button class="ib" title="Culture & Tourism" onclick="openCultureOverview()">🏺</button><button class="ib" title="Faith" onclick="openFaith()">🙏</button><button class="ib" title="Ranking" onclick="openScore()">🏆</button><button class="ib" title="Help" onclick="openHelp()">❔</button></div>
@@ -2722,6 +2722,8 @@ function toggle3DWorld(){threeWorld.enabled=!threeWorld.enabled;threeWorld.activ
 <script src="js/ae3d-cities.js"></script>
 <script src="js/ae3d-hud.js"></script>
 <script src="js/ae3d-review.js"></script>
+<script src="js/ae3d-glb.js"></script>
+<script src="js/ae3d-bodies.js"></script>
 <script src="js/ae3d-diplo.js"></script>
 <script src="js/ae3d-mobile.js"></script>
 <script>
@@ -3120,6 +3122,4 @@ setTimeout(bootAethermoor,0);
 window.addEventListener('load',bootAethermoor,{once:true});
 
 </script>
-
-
 </body></html>
