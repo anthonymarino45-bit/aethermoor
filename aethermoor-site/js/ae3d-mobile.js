@@ -118,7 +118,9 @@ const css=`
  #sel{width:min(60vw,430px)}#sel .portrait{height:92px}
 }
 `;
-const st=document.createElement('style');st.id='ae-mobile-css';st.textContent=css;document.head.appendChild(st);
+const st=document.createElement('style');st.id='ae-mobile-css';st.textContent=css;(document.body||document.head).appendChild(st);
+// The game's own stylesheet can sit later in the page (e.g. when hosted without a <head>), so outrank it by specificity, not source order.
+try{const lift=rules=>{for(const r of rules){if(r.selectorText){r.selectorText=r.selectorText.split(',').map(s=>{s=s.trim();return /^body\b/.test(s)?'html '+s:'html body '+s;}).join(',');}else if(r.cssRules)lift(r.cssRules);}};lift(st.sheet.cssRules);}catch(e){}
 
 function boot(){const c=document.getElementById('map');if(!c||typeof cam==='undefined'||typeof view==='undefined'){setTimeout(boot,250);return;}init(c);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
